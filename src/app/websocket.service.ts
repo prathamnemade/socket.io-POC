@@ -12,19 +12,23 @@ export class WebsocketService {
 
   constructor() { }
   data;
-  connect() {
+  connect(): Rx.Subject<MessageEvent> {
     this.socket = io('http://localhost:5000');
-    this.socket.on('message', (data) => {
-      this.data = data
-      console.log("Received message from Websocket Server")
+    let observable = new Observable(observer => {
+        this.socket.on('message', (data) => {
+          console.log("Received message from Websocket Server")
+          observer.next(data);
+        })
+        return () => {
+          this.socket.disconnect();
+        }
+    });
+    let observer = {
+        next: (data: Object) => {
+            this.socket.emit('message', JSON.stringify(data));
+        },
+    };
+    return Rx.Subject.create(observer, observable);
+  }
 
-    })
-  }
-  disconnect() {
-    //to disconnect
-    this.socket.disconnect();
-  }
-  backtobanckend(data) {
-    this.socket.emit('message', JSON.stringify(data));
-  }
 }

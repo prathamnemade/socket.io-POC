@@ -9,15 +9,20 @@ import { map } from 'rxjs/operators';
 export class ChatService {
 
   messages: Subject<any>;
-
+  
   // Our constructor calls our wsService connect method
   constructor(private wsService: WebsocketService) {
-    this.wsService.connect()
-    this.messages = this.wsService.data
-  }
-
+    this.messages = <Subject<any>>wsService
+      .connect()
+      .map((response: any): any => {
+        return response;
+      })
+   }
+  
+  // Our simplified interface for sending
+  // messages back to our socket.io server
   sendMsg(msg) {
-    this.wsService.backtobanckend(msg)
+    this.messages.next(msg);
   }
 
 }
