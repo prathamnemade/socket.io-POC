@@ -1,27 +1,80 @@
-let app = require('express')();
-let http = require('http').Server(app);
-let io = require('socket.io')(http);
+/*
 
-io.on('connection', (socket) => {
+  There are some minor modifications to the default Express setup
+  Each is commented and marked with [SH] to make them easy to find
 
-    // Log whenever a user connects
-    console.log('user connected');
+ */
 
-    // Log whenever a client disconnects from our websocket server
-    socket.on('disconnect', function(){
-        console.log('user disconnected');
+var express = require('express');
+var path = require('path');
+var logger = require('morgan');
+var bodyParser = require('body-parser');
+var cors = require('cors');
+
+// [SH] Bring in the data model
+require('./api/models/db');
+
+// [SH] Bring in the routes for the API (delete the default routes)
+var routesApi = require('./api/routes/index');
+
+var app = express();
+
+// view engine setup
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'jade');
+
+// uncomment after placing your favicon in /public
+//app.use(favicon(__dirname + '/public/favicon.ico'));
+app.use(logger('dev'));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(cors());
+const port = process.env.PORT || 9999;
+app.set('port', port);
+// [SH] Initialise Passport before using the route middleware
+
+// [SH] Use the API routes when path starts with /api
+app.use('/chatBox', routesApi);
+
+// catch 404 and forward to error handler
+app.use(function(req, res, next) {
+    var err = new Error('Not Found');
+    err.status = 404;
+    next(err);
+});
+
+// error handlers
+
+// [SH] Catch unauthorised errors
+app.use(function (err, req, res, next) {
+  if (err.name === 'UnauthorizedError') {
+    res.status(401);
+    res.json({"message" : err.name + ": " + err.message});
+  }
+});
+
+// development error handler
+// will print stacktrace
+if (app.get('env') === 'development') {
+    app.use(function(err, req, res, next) {
+        res.status(err.status || 500);
+        res.render('error', {
+            message: err.message,
+            error: err
+        });
     });
+}
 
-    // When we receive a 'message' event from our client, print out
-    // the contents of that message and then echo it back to our client
-    // using `io.emit()`
-    socket.on('message', (message) => {
-        console.log("Message Received: " + message);
-        io.emit('message', {type:'new-message', text: message+'from backebd'});    
+// production error handler
+// no stacktraces leaked to user
+app.use(function(err, req, res, next) {
+    res.status(err.status || 500);
+    res.render('error', {
+        message: err.message,
+        error: {}
     });
 });
 
-// Initialize our websocket server on port 5000
-http.listen(5000, () => {
-    console.log('started on port 5000');
-});
+
+app.listen(port, () => console.log(`Example app listening on port ${port}!`))
+module.exports = app;
